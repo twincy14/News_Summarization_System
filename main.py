@@ -9,9 +9,13 @@ Integrates Modules 1 to 4 into an automated pipeline:
 5. Output structured benchmark summary table
 """
 
+import sys
 import time
 from typing import Optional
 import pandas as pd
+
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
 
 from dataset import load_news_dataset
 from preprocess import preprocess_article
@@ -51,14 +55,14 @@ def run_pipeline(sample_size: int = 3, model_name: str = "facebook/bart-large-cn
         print(f"Processing Article [{idx}/{len(data)}]...")
         
         # Module 2: Preprocess
-        clean_text = preprocess_article(raw_article)
+        clean_text = preprocess_article(raw_article, preserve_paragraphs=True)
         
         # Module 3: Summarize
         start_time = time.time()
         if structured:
-            generated_summary = summarizer.generate_structured_summary(raw_article)
+            generated_summary = summarizer.generate_structured_summary(clean_text)
         else:
-            generated_summary = summarizer.generate_summary(clean_text)
+            generated_summary = summarizer.generate_summary(clean_text, thorough=True)
         gen_time = time.time() - start_time
 
         

@@ -10,6 +10,7 @@ Cleans raw news article text:
 
 import re
 import html
+from typing import Optional
 
 
 def remove_cnn_prefix(text: str) -> str:
@@ -25,26 +26,33 @@ def remove_html_tags(text: str) -> str:
     return html.unescape(clean_text)
 
 
-def collapse_whitespace(text: str) -> str:
-    """Normalize whitespace by collapsing multiple spaces/newlines into single spaces."""
+def collapse_whitespace(text: str, preserve_paragraphs: bool = True) -> str:
+    """Normalize whitespace while optionally preserving natural paragraph breaks."""
+    if preserve_paragraphs:
+        text = text.replace('\r\n', '\n').replace('\r', '\n')
+        text = re.sub(r'[ \t]+', ' ', text)
+        text = re.sub(r'\n\s*\n+', '\n\n', text)
+        return text.strip()
     return re.sub(r'\s+', ' ', text).strip()
 
 
 def truncate_words(text: str, max_words: int = 700) -> str:
-    """Truncate article to max word limit to fit transformer token limits (~1024 tokens)."""
+    """Truncate article to max word limit if explicitly requested."""
     words = text.split()
     if len(words) > max_words:
         return ' '.join(words[:max_words])
     return text
 
 
-def preprocess_article(text: str, max_words: int = 700) -> str:
+def preprocess_article(text: str, max_words: Optional[int] = None, preserve_paragraphs: bool = True) -> str:
     """
     Full light preprocessing pipeline for abstractive summarization.
+    Preserves whole article content without arbitrary cutoff when max_words is None.
 
     Args:
         text (str): Raw article text.
-        max_words (int): Maximum word count limit for truncation.
+        max_words (Optional[int]): Maximum word count limit for truncation. Defaults to None (full article).
+        preserve_paragraphs (bool): Whether to keep paragraph breaks. Defaults to True.
 
     Returns:
         str: Cleaned, natural text ready for model input.
@@ -54,8 +62,9 @@ def preprocess_article(text: str, max_words: int = 700) -> str:
     
     cleaned = remove_cnn_prefix(text)
     cleaned = remove_html_tags(cleaned)
-    cleaned = collapse_whitespace(cleaned)
-    cleaned = truncate_words(cleaned, max_words=max_words)
+    cleaned = collapse_whitespace(cleaned, preserve_paragraphs=preserve_paragraphs)
+    if max_words is not None:
+        cleaned = truncate_words(cleaned, max_words=max_words)
     
     return cleaned
 
